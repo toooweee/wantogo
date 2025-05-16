@@ -1,38 +1,35 @@
 import {
-  BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { Post } from './posts.interface';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Post } from './post.entity';
 
 @Injectable()
 export class PostsService {
-  private lastPostId = 0;
-  private posts: Post[] = [];
+  constructor(
+    @InjectRepository(Post)
+    private readonly postsRepository: Repository<Post>,
+  ) {}
 
-  findAll() {
-    return this.posts;
+  async findAll() {
+    return await this.postsRepository.find();
   }
 
-  create(createPostDto: CreatePostDto) {
-    if (!createPostDto) {
-      throw new BadRequestException();
-    }
-
-    const newPost: Post = {
-      id: ++this.lastPostId,
-      ...createPostDto,
-    };
-
-    this.posts.push(newPost);
-
+  async create(createPostDto: CreatePostDto) {
+    const newPost = await this.postsRepository.create(createPostDto);
+    await this.postsRepository.save(newPost);
     return newPost;
   }
 
-  findOne(id: number) {
-    const post = this.posts.find((post) => post.id === id);
+  async findOne(id: number) {
+    const post = await this.postsRepository.findOne({
+      where: { id },
+    });
 
     if (!post) {
       throw new NotFoundException('Post not found');
@@ -41,28 +38,35 @@ export class PostsService {
     return post;
   }
 
-  update(id: number, updatePostDto: UpdatePostDto) {
-    const postIndex = this.posts.findIndex((post) => post.id === id);
+  async update(id: number, updatePostDto: UpdatePostDto) {
+    try {
+      await this.findOne(id);
+      return await this.postsRepository.update(id, updatePostDto);
+    } catch (e) {
+      if (e instanceof NotFoundException) {
+        throw e;
+      }
 
-    if (postIndex < 0) {
-      throw new NotFoundException('Post not found');
+      console.error(e);
+      throw new InternalServerErrorException(
+        'Something went wrong via updating post',
+      );
     }
-
-    this.posts[postIndex] = {
-      id: this.posts[postIndex].id,
-      title: updatePostDto.title || this.posts[postIndex].title,
-      content: updatePostDto.content || this.posts[postIndex].content,
-    };
-
-    return this.posts[postIndex];
   }
 
-  delete(id: number) {
-    const postIndex = this.posts.findIndex((post) => post.id === id);
-    if (postIndex > -1) {
-      this.posts.splice(postIndex, 1);
-    } else {
-      throw new NotFoundException('Post not found');
+  async delete(id: number) {
+    try {
+      await this.findOne(id);
+      return await this.postsRepository.delete(id);
+    } catch (e) {
+      if (e instanceof NotFoundException) {
+        throw e;
+      }
+
+      console.error(e);
+      throw new InternalServerErrorException(
+        'Something went wrong via deleting post',
+      );
     }
   }
 }
