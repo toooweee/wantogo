@@ -8,10 +8,17 @@ import { UsersService } from '../users/users.service';
 import AuthDto from './dto/auth.dto';
 import * as argon from 'argon2';
 import { PostgresErrorCode } from '../database/postgresErrorCodes.enum';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { TokenPayload } from './interfaces';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async register(registerDto: AuthDto) {
     const hashedPassword = await argon.hash(registerDto.password);
@@ -48,6 +55,17 @@ export class AuthService {
     } catch (e) {
       throw new UnauthorizedException('Invalid credentials');
     }
+  }
+
+  async getCookieWithJwtToken(userId: number) {
+    const payload: TokenPayload = { userId };
+    const token = await this.jwtService.signAsync(payload);
+    const expirationTime = this.configService.get('JWT_EXPIRATION_TIME');
+    return `Authentication=${token}; HttpOnly; Path=/; Max-Age=${this.transformAgeToMS(expirationTime)}`;
+  }
+
+  transformAgeToMS(time: string) {
+    return parseInt(time) * 60 * 1000;
   }
 
   private async comparePassword(hashedPassword: string, password: string) {
