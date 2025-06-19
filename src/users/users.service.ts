@@ -25,6 +25,20 @@ export class UsersService {
     return user;
   }
 
+  async findById(id: number) {
+    const user = await this.usersRepository.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
   async create(createUserDto: CreateUserDto) {
     const user = this.usersRepository.create(createUserDto);
     await this.usersRepository.save(user);

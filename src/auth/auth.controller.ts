@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -13,6 +14,7 @@ import AuthDto from './dto/auth.dto';
 import { LocalAuthenticationGuard } from './guards/localAuthentication.guard';
 import { RequestWithUser } from './interfaces/requestWithUser.interface';
 import { Response } from 'express';
+import { JwtAuthenticationGuard } from './guards/jwt-authentication.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -37,5 +39,17 @@ export class AuthController {
     return {
       ...user,
     };
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.setHeader('Set-Cookie', this.authService.getCookieForLogout());
+    return HttpStatus.OK;
+  }
+
+  @UseGuards(JwtAuthenticationGuard)
+  @Get()
+  authenticate(@Req() req: RequestWithUser) {
+    return req.user;
   }
 }

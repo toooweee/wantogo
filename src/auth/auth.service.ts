@@ -61,10 +61,14 @@ export class AuthService {
     const payload: TokenPayload = { userId };
     const token = await this.jwtService.signAsync(payload);
     const expirationTime = this.configService.get('JWT_EXPIRATION_TIME');
-    return `Authentication=${token}; HttpOnly; Path=/; Max-Age=${this.transformAgeToMS(expirationTime)}`;
+    return `Authentication=${token}; HttpOnly; Path=/; Max-Age=${this.transformExpToMS(expirationTime)}`;
   }
 
-  transformAgeToMS(time: string) {
+  getCookieForLogout() {
+    return `Authentication=; HttpOnly=true; Path=/; Max-Age=0`;
+  }
+
+  transformExpToMS(time: string) {
     return parseInt(time) * 60 * 1000;
   }
 
